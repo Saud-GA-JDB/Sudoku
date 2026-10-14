@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Scanner;
 
@@ -15,10 +16,15 @@ public class Sudoku {
     private final Path filePath;
 
     private int[] fullGrid;
+    private BitSet[] pencilMark;
 
     public Sudoku() {
         this.filePath = Path.of("puzzles/puzzle1.txt");
         this.fullGrid = new int[81];
+        this.pencilMark = new BitSet[81];
+        for (int index = 0; index < pencilMark.length; index++) {
+            pencilMark[index] = new BitSet(10);
+        }
     }
 
     public HashSet<Integer> getRow(HashSet<Integer> set, int elementIndex) {
@@ -64,13 +70,53 @@ public class Sudoku {
         return set;
     }
 
+    public void pencilMarkTraverse() {
+        for (BitSet candidates : pencilMark) {
+            candidates.clear();
+        }
+        for (int index = 0; index < fullGrid.length; index++) {
+            if (fullGrid[index] != 0) {
+                continue;
+            }
+
+            HashSet<Integer> related = getRelated(new HashSet<>(), index);
+            for (int value = 1; value <= 9; value++) {
+                if (!related.contains(value)) {
+                    pencilMark[index].set(value);
+                }
+            }
+
+            if (pencilMark[index].cardinality() == 1) {
+                int solution = pencilMark[index].nextSetBit(1);
+                fullGrid[index] = solution;
+                pencilMark[index].clear();
+                updatePreviousPencilMarks(index, solution);
+            }
+        }
+    }
+
+    private void updatePreviousPencilMarks(int elementIndex, int solution) {
+        int row = elementIndex / 9;
+        int col = elementIndex % 9;
+        for (int index = 0; index < elementIndex; index++) {
+            if (fullGrid[index] != 0) {
+                continue;
+            }
+            int previousRow = index / 9;
+            int previousCol = index % 9;
+            if (previousRow == row || previousCol == col || (previousRow / 3 == row / 3 && previousCol / 3 == col / 3)) {
+                pencilMark[index].clear(solution);
+            }
+        }
+    }
+
     public void populateGrid() {
         try (Scanner scanner = new Scanner(filePath)) {
             int index = 0;
             while (scanner.hasNext()) {
                 if (scanner.hasNextInt()) {
                     if (index >= fullGrid.length) {
-                        throw new IllegalArgumentException("Puzzle contains more than 81 integers.");
+                        throw new IllegalArgumentException("Puzzle contains more than 81 cells");
                     }
                     fullGrid[index++] = scanner.nextInt();
                 } else {

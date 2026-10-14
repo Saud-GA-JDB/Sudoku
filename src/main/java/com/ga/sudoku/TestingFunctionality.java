@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashSet;
 
 @RestController
@@ -26,6 +28,13 @@ public class TestingFunctionality {
         soduku.getRelated(set, 2);
         System.out.println(set);
         return set;
+    }
+
+    @GetMapping("/getPencilMarks")
+    public BitSet[] getBitSet() {
+        soduku.pencilMarkTraverse();
+        System.out.println(Arrays.toString(soduku.getPencilMark()));
+        return soduku.getPencilMark();
     }
 
 }

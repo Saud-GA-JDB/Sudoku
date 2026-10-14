@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Scanner;
 
 @Data
@@ -18,6 +19,49 @@ public class Sudoku {
     public Sudoku() {
         this.filePath = Path.of("puzzles/puzzle1.txt");
         this.fullGrid = new int[81];
+    }
+
+    public HashSet<Integer> getRow(HashSet<Integer> set, int elementIndex) {
+        int rowStart = (elementIndex / 9) * 9;
+        for (int col = 0; col < 9; col++) {
+            int value = fullGrid[rowStart + col];
+            if (value != 0) {
+                set.add(value);
+            }
+        }
+        return set;
+    }
+
+    public HashSet<Integer> getCol(HashSet<Integer> set, int elementIndex) {
+        int col = elementIndex % 9;
+        for (int row = 0; row < 9; row++) {
+            int value = fullGrid[row * 9 + col];
+            if (value != 0) {
+                set.add(value);
+            }
+        }
+        return set;
+    }
+
+    public HashSet<Integer> getGrid(HashSet<Integer> set, int elementIndex) {
+        int rowStart = (elementIndex / 9 / 3) * 3;
+        int colStart = (elementIndex % 9 / 3) * 3;
+        for (int row = rowStart; row < rowStart + 3; row++) {
+            for (int col = colStart; col < colStart + 3; col++) {
+                int value = fullGrid[row * 9 + col];
+                if (value != 0) {
+                    set.add(value);
+                }
+            }
+        }
+        return set;
+    }
+
+    public HashSet<Integer> getRelated(HashSet<Integer> set, int elementIndex) {
+        getRow(set, elementIndex);
+        getCol(set, elementIndex);
+        getGrid(set, elementIndex);
+        return set;
     }
 
     public void populateGrid() {

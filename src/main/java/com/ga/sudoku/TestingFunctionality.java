@@ -37,4 +37,16 @@ public class TestingFunctionality {
         return soduku.getPencilMark();
     }
 
+    @GetMapping("/solveEasyPencilMarks")
+    public BitSet[] solveEasyPencilMarks() {
+        soduku.solveEasyPencilMarks();
+        System.out.println(Arrays.toString(soduku.getPencilMark()));
+        return soduku.getPencilMark();
+    }
+
+    @GetMapping("/seeResult")
+    public int[] Results() {
+        System.out.println(Arrays.toString(soduku.getFullGrid()));
+        return soduku.getFullGrid();
+    }
 }

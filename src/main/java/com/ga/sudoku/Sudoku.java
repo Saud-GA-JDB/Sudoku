@@ -19,7 +19,7 @@ public class Sudoku {
     private BitSet[] pencilMark;
 
     public Sudoku() {
-        this.filePath = Path.of("puzzles/puzzle1.txt");
+        this.filePath = Path.of("puzzles/puzzle4.txt");
         this.fullGrid = new int[81];
         this.pencilMark = new BitSet[81];
         for (int index = 0; index < pencilMark.length; index++) {
@@ -68,6 +68,20 @@ public class Sudoku {
         getCol(set, elementIndex);
         getGrid(set, elementIndex);
         return set;
+    }
+
+    public void solveEasyPencilMarks() {
+        boolean hasSingleCandidate = true;
+        while (hasSingleCandidate) {
+            pencilMarkTraverse();
+            hasSingleCandidate = false;
+            for (BitSet candidates : pencilMark) {
+                if (candidates.cardinality() == 1) {
+                    hasSingleCandidate = true;
+                    break;
+                }
+            }
+        }
     }
 
     public void pencilMarkTraverse() {

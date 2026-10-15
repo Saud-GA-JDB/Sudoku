@@ -19,7 +19,7 @@ public class Sudoku {
     private BitSet[] pencilMark;
 
     public Sudoku() {
-        this.filePath = Path.of("puzzles/puzzle4.txt");
+        this.filePath = Path.of("puzzles/puzzle5.txt");
         this.fullGrid = new int[81];
         this.pencilMark = new BitSet[81];
         for (int index = 0; index < pencilMark.length; index++) {
@@ -188,15 +188,102 @@ public class Sudoku {
     public void solveEasyPencilMarks() {
         boolean hasSingleCandidate = true;
         while (hasSingleCandidate) {
-            pencilMarkTraverse();
             hasSingleCandidate = false;
-            for (BitSet candidates : pencilMark) {
-                if (candidates.cardinality() == 1) {
+            for (int index = 0; index < fullGrid.length; index++) {
+                if (fullGrid[index] == 0 && pencilMark[index].cardinality() == 1) {
+                    int solution = pencilMark[index].nextSetBit(1);
+                    fullGrid[index] = solution;
+                    pencilMark[index].clear();
+                    updateRelatedPencilMarks(index, solution);
                     hasSingleCandidate = true;
-                    break;
                 }
             }
         }
+    }
+
+    public boolean solveBacktracking() {
+        int[] savedGrid = fullGrid.clone();
+        BitSet[] savedMarks = copyPencilMarks();
+        solveEasyPencilMarks();
+        if (!isGridValid()) {
+            restoreState(savedGrid, savedMarks);
+            return false;
+        }
+        // find cell with least pencilMarks
+        int selectedIndex = -1;
+        int fewestCandidates = 10;
+        for (int index = 0; index < fullGrid.length; index++) {
+            if (fullGrid[index] != 0) {
+                continue;
+            }
+            int count = pencilMark[index].cardinality();
+            if (count == 0) {
+                restoreState(savedGrid, savedMarks);
+                return false;
+            }
+            if (count < fewestCandidates) {
+                selectedIndex = index;
+                fewestCandidates = count;
+            }
+        }
+        if (selectedIndex == -1) {
+            return true;
+        }
+
+        int[] beforeGuessGrid = fullGrid.clone();
+        BitSet[] beforeGuessMarks = copyPencilMarks();
+        BitSet candidates = beforeGuessMarks[selectedIndex];
+        for (int value = candidates.nextSetBit(1); value >= 1 && value <= 9;
+                value = candidates.nextSetBit(value + 1)) {
+            if (getRelated(new HashSet<>(), selectedIndex).contains(value)) {
+                continue;
+            }
+            fullGrid[selectedIndex] = value;
+            pencilMark[selectedIndex].clear();
+            updateRelatedPencilMarks(selectedIndex, value);
+            if (solveBacktracking()) {
+                return true;
+            }
+            restoreState(beforeGuessGrid, beforeGuessMarks);
+        }
+        restoreState(savedGrid, savedMarks);
+        return false;
+    }
+
+    private BitSet[] copyPencilMarks() {
+        BitSet[] copy = new BitSet[pencilMark.length];
+        for (int index = 0; index < pencilMark.length; index++) {
+            copy[index] = (BitSet) pencilMark[index].clone();
+        }
+        return copy;
+    }
+
+    private void restoreState(int[] savedGrid, BitSet[] savedMarks) {
+        System.arraycopy(savedGrid, 0, fullGrid, 0, fullGrid.length);
+        for (int index = 0; index < pencilMark.length; index++) {
+            pencilMark[index].clear();
+            pencilMark[index].or(savedMarks[index]);
+        }
+    }
+
+    private boolean isGridValid() {
+        for (int index = 0; index < fullGrid.length; index++) {
+            int value = fullGrid[index];
+            if (value < 0 || value > 9) {
+                return false;
+            }
+            if (value == 0) {
+                continue;
+            }
+            for (int other = index + 1; other < fullGrid.length; other++) {
+                boolean related = index / 9 == other / 9 || index % 9 == other % 9
+                        || (index / 27 == other / 27 && index % 9 / 3 == other % 9 / 3);
+                if (related && fullGrid[other] == value) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public void pencilMarkTraverse() {

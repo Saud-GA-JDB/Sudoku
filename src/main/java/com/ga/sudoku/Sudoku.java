@@ -2,17 +2,21 @@ package com.ga.sudoku;
 
 import lombok.Data;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.UUID;
 import java.util.BitSet;
 import java.util.HashSet;
-import java.util.Scanner;
 
 @Data
 @Service
 public class Sudoku {
+    private static final Path UPLOAD_DIR = Path.of("puzzles").toAbsolutePath().normalize();
     private final Path filePath;
 
     private int[] fullGrid;
@@ -25,6 +29,71 @@ public class Sudoku {
         for (int index = 0; index < pencilMark.length; index++) {
             pencilMark[index] = new BitSet(10);
         }
+    }
+
+    public static String uploadPuzzle(String fileName, MultipartFile file) {
+        Path requestedPath = puzzlePath(fileName);
+        try {
+            parsePuzzle(new String(file.getBytes(), StandardCharsets.UTF_8));
+            Files.createDirectories(UPLOAD_DIR);
+            String savedName = UUID.randomUUID() + "_" + requestedPath.getFileName();
+            file.transferTo(UPLOAD_DIR.resolve(savedName));
+            return savedName;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not save puzzle", e);
+        }
+    }
+
+    private static Path puzzlePath(String fileName) {
+        return UPLOAD_DIR.resolve(fileName);
+    }
+
+    static int[] parsePuzzle(String contents) {
+        int[] grid = new int[81];
+        int index = 0;
+        for (String line : contents.split("\\R")) {
+            if (line.isBlank() || line.matches("[\\s+|\\-]+")) {
+                continue;
+            }
+            for (String token : line.replace('|', ' ').trim().split("\\s+")) {
+                if (!token.matches("[0-9]")) {
+                    throw new InvalidCharacterException("Invalid puzzle value: " + token + ". Only digits 0-9 are allowed");
+                }
+                if (index == grid.length) {
+                    throw new InvalidCharacterException("Puzzle must contain exactly 81 cells");
+                }
+                grid[index++] = Integer.parseInt(token);
+            }
+        }
+        if (index != grid.length) {
+            throw new InvalidCharacterException("Puzzle must contain exactly 81 cells; found " + index);
+        }
+        return grid;
+    }
+
+    public int[] loadPuzzle(String fileName) {
+        Path path = puzzlePath(fileName);
+        try {
+            fullGrid = parsePuzzle(Files.readString(path));
+            for (BitSet marks : pencilMark) {
+                marks.clear();
+            }
+            System.out.print(formatPuzzle());
+            return fullGrid.clone();
+        } catch (NoSuchFileException e) {
+            throw new SudokuFileNotFoundException("Puzzle file does not exist: " + path.getFileName());
+        } catch (IOException e) {
+            throw new RuntimeException("Could not load puzzle", e);
+        }
+    }
+
+    private String formatPuzzle() {
+        StringBuilder result = new StringBuilder();
+        for (int index = 0; index < fullGrid.length; index++) {
+            result.append(fullGrid[index]);
+            result.append(index % 9 == 8 ? '\n' : ' ');
+        }
+        return result.toString();
     }
 
     public HashSet<Integer> getRow(HashSet<Integer> set, int elementIndex) {
@@ -327,21 +396,78 @@ public class Sudoku {
     }
 
     public void populateGrid() {
-        try (Scanner scanner = new Scanner(filePath)) {
-            int index = 0;
-            while (scanner.hasNext()) {
-                if (scanner.hasNextInt()) {
-                    if (index >= fullGrid.length) {
-                        throw new IllegalArgumentException("Puzzle contains more than 81 cells");
+        loadPuzzle(filePath.getFileName().toString());
+    }
+
+    public String solvePuzzle(String fileName) {
+        loadPuzzle(fileName);
+        pencilMarkTraverse();
+        solveEasyPencilMarks();
+        if (!isGridValid()) {
+            throw new IllegalStateException("Puzzle has no solution");
+        }
+        while (true) {
+            int remainingCells = 0;
+            for (int index = 0; index < fullGrid.length; index++) {
+                if (fullGrid[index] == 0) {
+                    if (pencilMark[index].isEmpty()) {
+                        throw new IllegalStateException("Puzzle has no solution");
                     }
-                    fullGrid[index++] = scanner.nextInt();
-                } else {
-                    scanner.next();
+                    remainingCells++;
                 }
             }
-            System.out.println(Arrays.toString(fullGrid));
-        } catch (IOException e) {
-            e.printStackTrace();
+            if (remainingCells == 0) {
+                break;
+            }
+
+            boolean solvedCell = false;
+            for (int index = 0; index < fullGrid.length; index++) {
+                if (fullGrid[index] == 0) {
+                    solveMedium(index);
+                    if (fullGrid[index] != 0) {
+                        solvedCell = true;
+                    }
+                }
+            }
+            if (solvedCell) {
+                solveEasyPencilMarks();
+                continue;
+            }
+
+            int candidatesBefore = 0;
+            for (BitSet marks : pencilMark) {
+                candidatesBefore += marks.cardinality();
+            }
+            for (int index = 0; index < fullGrid.length; index++) {
+                if (fullGrid[index] == 0) {
+                    terminatePossiblePencilMarksRow(index);
+                    terminatePossiblePencilMarksCol(index);
+                }
+            }
+            int candidatesAfter = 0;
+            for (BitSet marks : pencilMark) {
+                candidatesAfter += marks.cardinality();
+            }
+            if (candidatesAfter < candidatesBefore) {
+                solveEasyPencilMarks();
+                continue;
+            }
+            if (!solveBacktracking()) {
+                throw new IllegalStateException("Puzzle has no solution");
+            }
+            break;
         }
+        String name = puzzlePath(fileName).getFileName().toString();
+        int extensionIndex = name.lastIndexOf('.');
+        String solutionName = (extensionIndex > 0 ? name.substring(0, extensionIndex) : name)
+                + "_solution.txt";
+        String solution = formatPuzzle();
+        try {
+            Files.writeString(UPLOAD_DIR.resolve(solutionName), solution);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not save puzzle solution", e);
+        }
+        System.out.print(solution);
+        return solutionName;
     }
 }

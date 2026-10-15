@@ -2,7 +2,10 @@ package com.ga.sudoku;
 
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.BitSet;
@@ -73,5 +76,21 @@ public class TestingFunctionality {
         soduku.solveBacktracking();
         System.out.println(Arrays.toString(soduku.getFullGrid()));
         return soduku.getFullGrid();
+    }
+
+    @PostMapping("/uploadPuzzle")
+    public String uploadPuzzle(@RequestParam("name") String fileName, @RequestParam("image") MultipartFile file) {
+        return Sudoku.uploadPuzzle(fileName, file);
+    }
+
+    @GetMapping("/loadPuzzle")
+    public int[] loadPuzzle(@RequestParam("fileName") String fileName) {
+        return new Sudoku().loadPuzzle(fileName);
+    }
+
+    @PostMapping("/solvePuzzle")
+    public String solvePuzzle(@RequestParam("fileName") String fileName) {
+        // Each request gets its own grid so concurrent puzzles cannot mix.
+        return new Sudoku().solvePuzzle(fileName);
     }
 }

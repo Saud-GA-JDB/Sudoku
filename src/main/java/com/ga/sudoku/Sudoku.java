@@ -130,6 +130,60 @@ public class Sudoku {
             updateRelatedPencilMarks(elementIndex, solution);
         }
     }
+    // look at note 4 to get full explanation
+    public void terminatePossiblePencilMarksRow(int elementIndex) {
+        if (fullGrid[elementIndex] != 0) {
+            return;
+        }
+        int cellRow = elementIndex / 9;
+        int rowStart = (cellRow / 3) * 3;
+        int colStart = (elementIndex % 9 / 3) * 3;
+        BitSet ownCellUniquePencilMarks = (BitSet) pencilMark[elementIndex].clone();
+        for (int row = rowStart; row < rowStart + 3; row++) {
+            if (row == cellRow) {
+                continue;
+            }
+            for (int col = colStart; col < colStart + 3; col++) {
+                int index = row * 9 + col;
+                if (fullGrid[index] == 0) {
+                    ownCellUniquePencilMarks.andNot(pencilMark[index]);
+                }
+            }
+        }
+        for (int col = 0; col < 9; col++) {
+            int index = cellRow * 9 + col;
+            if ((col < colStart || col >= colStart + 3) && fullGrid[index] == 0) { //checks that is outside the same 3*3grid
+                pencilMark[index].andNot(ownCellUniquePencilMarks);
+            }
+        }
+    }
+
+    public void terminatePossiblePencilMarksCol(int elementIndex) {
+        if (fullGrid[elementIndex] != 0) {
+            return;
+        }
+        int cellCol = elementIndex % 9;
+        int rowStart = (elementIndex / 9 / 3) * 3;
+        int colStart = (cellCol / 3) * 3;
+        BitSet ownCellUniquePencilMarks = (BitSet) pencilMark[elementIndex].clone();
+        for (int col = colStart; col < colStart + 3; col++) {
+            if (col == cellCol) {
+                continue;
+            }
+            for (int row = rowStart; row < rowStart + 3; row++) {
+                int index = row * 9 + col;
+                if (fullGrid[index] == 0) {
+                    ownCellUniquePencilMarks.andNot(pencilMark[index]);
+                }
+            }
+        }
+        for (int row = 0; row < 9; row++) {
+            int index = row * 9 + cellCol;
+            if ((row < rowStart || row >= rowStart + 3) && fullGrid[index] == 0) {
+                pencilMark[index].andNot(ownCellUniquePencilMarks);
+            }
+        }
+    }
 
     public void solveEasyPencilMarks() {
         boolean hasSingleCandidate = true;

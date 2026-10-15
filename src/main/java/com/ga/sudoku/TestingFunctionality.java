@@ -49,4 +49,29 @@ public class TestingFunctionality {
         System.out.println(Arrays.toString(soduku.getFullGrid()));
         return soduku.getFullGrid();
     }
+
+    @GetMapping("/solveMedium")
+    public int[] solveMedium() {
+        for (int i=0; i<81; i++)
+            soduku.solveMedium(i);
+        System.out.println(Arrays.toString(soduku.getFullGrid()));
+        return soduku.getFullGrid();
+    }
+
+    @GetMapping("/terminate")
+    public int[] terminate() {
+        for (int i=0; i<81; i++) {
+            soduku.terminatePossiblePencilMarksCol(i);
+            soduku.terminatePossiblePencilMarksRow(i);
+        }
+        System.out.println(Arrays.toString(soduku.getFullGrid()));
+        return soduku.getFullGrid();
+    }
+
+    @GetMapping("/solveBacktracking")
+    public int[] backtracking() {
+        soduku.solveBacktracking();
+        System.out.println(Arrays.toString(soduku.getFullGrid()));
+        return soduku.getFullGrid();
+    }
 }

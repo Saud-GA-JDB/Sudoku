@@ -70,6 +70,67 @@ public class Sudoku {
         return set;
     }
 
+    public BitSet getRowPencilMarks(BitSet set, int elementIndex) {
+        int rowStart = (elementIndex / 9) * 9;
+        for (int index = rowStart; index < rowStart + 9; index++) {
+            if (index != elementIndex && fullGrid[index] == 0) {
+                set.or(pencilMark[index]);
+            }
+        }
+        return set;
+    }
+
+    public BitSet getColPencilMarks(BitSet set, int elementIndex) {
+        for (int index = elementIndex % 9; index < fullGrid.length; index += 9) {
+            if (index != elementIndex && fullGrid[index] == 0) {
+                set.or(pencilMark[index]);
+            }
+        }
+        return set;
+    }
+
+    public BitSet getGridPencilMarks(BitSet set, int elementIndex) {
+        int rowStart = (elementIndex / 9 / 3) * 3;
+        int colStart = (elementIndex % 9 / 3) * 3;
+        for (int row = rowStart; row < rowStart + 3; row++) {
+            for (int col = colStart; col < colStart + 3; col++) {
+                int index = row * 9 + col;
+                if (index != elementIndex && fullGrid[index] == 0) {
+                    set.or(pencilMark[index]);
+                }
+            }
+        }
+        return set;
+    }
+
+    public void solveMedium(int elementIndex) {
+        if (fullGrid[elementIndex] != 0 || pencilMark[elementIndex].isEmpty()) {
+            return;
+        }
+        int solution = 0;
+        for (int pass = 0; pass < 3; pass++) {
+            BitSet marks = new BitSet(10);
+            if (pass == 0) {
+                getGridPencilMarks(marks, elementIndex);
+            } else if (pass == 1) {
+                getRowPencilMarks(marks, elementIndex);
+            } else {
+                getColPencilMarks(marks, elementIndex);
+            }
+            BitSet unique = (BitSet) pencilMark[elementIndex].clone();
+            unique.andNot(marks);
+            if (unique.cardinality() == 1) {
+                solution = unique.nextSetBit(1); //gets the first on bit at 1 or after
+                fullGrid[elementIndex] = solution;
+                pencilMark[elementIndex].clear();
+                break;
+            }
+        }
+        if (solution != 0) {
+            updateRelatedPencilMarks(elementIndex, solution);
+        }
+    }
+
     public void solveEasyPencilMarks() {
         boolean hasSingleCandidate = true;
         while (hasSingleCandidate) {
@@ -104,15 +165,15 @@ public class Sudoku {
                 int solution = pencilMark[index].nextSetBit(1);
                 fullGrid[index] = solution;
                 pencilMark[index].clear();
-                updatePreviousPencilMarks(index, solution);
+                updateRelatedPencilMarks(index, solution);
             }
         }
     }
 
-    private void updatePreviousPencilMarks(int elementIndex, int solution) {
+    private void updateRelatedPencilMarks(int elementIndex, int solution) {
         int row = elementIndex / 9;
         int col = elementIndex % 9;
-        for (int index = 0; index < elementIndex; index++) {
+        for (int index = 0; index < fullGrid.length; index++) {
             if (fullGrid[index] != 0) {
                 continue;
             }
